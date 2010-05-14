@@ -2,7 +2,6 @@
 
 source("funcs.R")
 args=commandArgs(TRUE)
-print(args)
 
 usage="\n  Usage: ./Rae.R
     --genome=[Required: hg18|mm9]
@@ -11,6 +10,7 @@ usage="\n  Usage: ./Rae.R
     --qv=[Optional (default=0.1): Q-value threshold for significant alterations]
     --exclude=[Optional (default=FALSE): TRUE|FALSE, to exclude samples by pre-determined QC]
     --SNP6=[Optional (default=FALSE): TRUE|FALSE, enable special SNP6 array handling]\n
+		--normOnly=[Optional: runs only the first normalization/parameterization steps, skips latter steps of pipeline]\n
 "
 
 # Initialize default parameters
@@ -19,6 +19,7 @@ p$Qval=0.1
 p$Exclude=FALSE
 p$SNP6=FALSE
 p$Dir=getwd()
+p$NormOnly=FALSE
 
 # Verify that at least required parameters and their values are passed 
 if(length(args)<3) {
@@ -78,7 +79,7 @@ if(sum(grepl("--exclude=",args))>0) p$Exclude=as.logical(gsub("--exclude=","",ar
 # Provided value for SNP6, reset from default
 if(sum(grepl("--SNP6=",args))>0) p$SNP6=as.logical(gsub("--SNP6=","",args[grep("--SNP6=",args)]))
 
-cat("FINISHED ARG PROCESSING")
+if(sum(grepl("--normOnly",args))>0) p$NormOnly=TRUE
 
 # Load necessary packages
 options(warn=-1)
@@ -138,21 +139,24 @@ dd=gatherProjectSegmentation(p)
 cat(">> Step 2 of 5: Parameterizing discriminators per sample...\n")
 pp=parameterizeMultiComponentModel(p,dd)
 
-cat(">> Step 3 of 5: Scoring and assessing the recurrence of alterations...\n")
-dd=scoreProjectAnalysis(p,dd,pp)
+if(p$NormOnly==FALSE) {
+	cat(">> Step 3 of 5: Scoring and assessing the recurrence of alterations...\n")
+	dd=scoreProjectAnalysis(p,dd,pp)
 
-cat(">> Step 4 of 5: Selecting regions of interest...\n")
-try({
-  getRegionsOfInterest(p,dd,pp,errorFactor=0.25)
-})
-    
-cat(">> Step 5 of 5: Plotting output...\n")
-plotGenome(p,dd,save="pdf")
+	cat(">> Step 4 of 5: Selecting regions of interest...\n")
+	try({getRegionsOfInterest(p,dd,pp,errorFactor=0.25)})
 
-if(grepl("hg",p$Build)) {
-	cat(">> Writing gene/tumor map...\n")
-	writeGeneMap(p)
+	cat(">> Step 5 of 5: Plotting output...\n")
+	plotGenome(p,dd,save="pdf")
+
+	if(grepl("hg",p$Build)) {
+		cat(">> Writing gene/tumor map...\n")
+		writeGeneMap(p)
+	}
+} else {
+	cat(">> Running normalization/parameterization-only mode, skip steps 3-5...\n")
 }
+
 ended=proc.time()
 
 cat("--------------------------------------------------------------\n")
