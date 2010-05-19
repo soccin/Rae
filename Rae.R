@@ -139,6 +139,10 @@ dd=gatherProjectSegmentation(p)
 cat(">> Step 2 of 5: Parameterizing discriminators per sample...\n")
 pp=parameterizeMultiComponentModel(p,dd)
 
+save(p,dd,pp,
+     file=paste("CHECKPOINT",gsub("-","",Sys.Date()),".Rdata",sep="_"),
+     compress=T)
+
 if(p$NormOnly==FALSE) {
 	cat(">> Step 3 of 5: Scoring and assessing the recurrence of alterations...\n")
 	dd=scoreProjectAnalysis(p,dd,pp)
