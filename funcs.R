@@ -500,55 +500,62 @@ getRegionsOfInterest=function(p,dd,pp,errorFactor=1) {
 
 # -------------------------------------------------------------------
 getSampleMembership=function(model,dd,pp,perc_arm_len=0.75,min_overlap_len=0.05) {
-	cyto=feat[feat$Type=="Cytoband",]
-	cen=sapply(unique(cyto$Chr),function(ch) {
-		idx=which(cyto$Chr==ch)
-		m=idx[max(grep("p",cyto$Name[idx]))]
-		as.integer(cyto$End[m])
-	})
-	names(cen)=unique(cyto$Chr)
-	model$SamplesWithQualifiedSpanningAlteration=rep(NA,nrow(model))
-
-	# Get segmentation	
-	seg=dd$output
-	seg=seg[!(seg$chrom>getSpeciesAutosome(p)),]
-	seg=seg[!(seg$num.mark<3),]
-	samples=unique(as.character(as.vector(seg$ID)))
-
-	# Transform segmentation
-	pidx=match(seg$ID,pp$names)
-	seg$A0=fer(seg$seg.mean,pp$Ea0[pidx],pp$betaA0[pidx])
-	seg$A1=ferA1(seg$seg.mean,pp$Ea1[pidx],pp$betaA1[pidx])
-	seg$D0=abs(fer(seg$seg.mean,pp$Ed0[pidx],pp$betaD0[pidx]))
-	seg$D1=abs(fer(seg$seg.mean,pp$Ed1[pidx],pp$betaD1[pidx]))
-
-	# Process regions
-	for(i in 1:nrow(model)) {
-		
-		# Use peak boundaries if they exist, otherwise regional	
-		st=ifelse(is.na(model$peak_start[i]),model$region_start[i],model$peak_start[i])
-		ed=ifelse(is.na(model$peak_end[i]),model$region_end[i],model$peak_end[i])
-		ch=model$chromosome[i]
-
-		# Segments and samples contributing signal to region
-		this=NULL
-		if(model$model[i]=="Amp") {
-			this=seg[which(seg$chrom==ch & seg$loc.end>=st & seg$loc.start<=ed & seg$A0>=0.9),]
-		} else {
-			this=seg[which(seg$chrom==ch & seg$loc.end>=st & seg$loc.start<=ed & seg$D0>=0.9),]
-		}
-		size=this$loc.end-this$loc.start+1
-		arm=ifelse(st>=cen[ch],length(Genome[[ch]])-cen[ch],cen[ch])
-		this=this[!(size/arm)>perc_arm_len,]
-		this=this[order(this$ID),]
-		ov=sapply(1:nrow(this),function(ii,this,st,ed) overlap2(st,ed,this$loc.start[ii],this$loc.end[ii]),this,st,ed)
-		samp=unique(this$ID)
-		fin=unlist(lapply(samp,function(s,this,ov) sum(ov[this$ID==s]),this,ov))
-		model$SamplesWithQualifiedSpanningAlteration[i]=paste(samp[(fin/(ed-st+1))>min_overlap_len],collapse=",")
-	}
-	return(model)
+  cyto=feat[feat$Type=="Cytoband",]
+  cen=sapply(unique(cyto$Chr),function(ch) {
+    idx=which(cyto$Chr==ch)
+    m=idx[max(grep("p",cyto$Name[idx]))]
+    as.integer(cyto$End[m])
+  })
+  names(cen)=unique(cyto$Chr)
+  model$SamplesWithQualifiedSpanningAlteration=rep(NA,nrow(model))
+  
+                                        # Get segmentation  
+  seg=dd$output
+  seg=seg[!(seg$chrom>getSpeciesAutosome(p)),]
+  seg=seg[!(seg$num.mark<3),]
+  samples=unique(as.character(as.vector(seg$ID)))
+  
+                                        # Transform segmentation
+  pidx=match(seg$ID,pp$names)
+  seg$A0=fer(seg$seg.mean,pp$Ea0[pidx],pp$betaA0[pidx])
+  seg$A1=ferA1(seg$seg.mean,pp$Ea1[pidx],pp$betaA1[pidx])
+  seg$D0=abs(fer(seg$seg.mean,pp$Ed0[pidx],pp$betaD0[pidx]))
+  seg$D1=abs(fer(seg$seg.mean,pp$Ed1[pidx],pp$betaD1[pidx]))
+  
+                                        # Process regions
+  rem=NULL
+  for(i in 1:nrow(model)) {
+    
+                                        # Use peak boundaries if they exist, otherwise regional 
+    st=ifelse(is.na(model$peak_start[i]),model$region_start[i],model$peak_start[i])
+    ed=ifelse(is.na(model$peak_end[i]),model$region_end[i],model$peak_end[i])
+    ch=model$chromosome[i]
+    
+                                        # Segments and samples contributing signal to region
+    this=NULL
+    if(model$model[i]=="Amp") {
+      this=seg[which(seg$chrom==ch & seg$loc.end>=st & seg$loc.start<=ed & seg$A0>=0.9),]
+    } else {
+      this=seg[which(seg$chrom==ch & seg$loc.end>=st & seg$loc.start<=ed & seg$D0>=0.9),]
+    }
+    if(nrow(this)==0) {
+      model$SamplesWithQualifiedSpanningAlteration[i]=NA
+      rem=c(rem,i)
+    }
+    print("OK 544")
+    size=this$loc.end-this$loc.start+1
+    arm=ifelse(st>=cen[ch],length(Genome[[ch]])-cen[ch],cen[ch])
+    this=this[!(size/arm)>perc_arm_len,]
+    this=this[order(this$ID),]
+    ov=sapply(1:nrow(this),function(ii,this,st,ed) overlap2(st,ed,this$loc.start[ii],this$loc.end[ii]),this,st,ed)
+    samp=unique(this$ID)
+    fin=unlist(lapply(samp,function(s,this,ov) sum(ov[this$ID==s]),this,ov))
+    model$SamplesWithQualifiedSpanningAlteration[i]=paste(samp[(fin/(ed-st+1))>min_overlap_len],collapse=",")
+  }
+  print("OK 554")
+  if(length(rem)>0) model=model[-rem,]
+  return(model)
 }
-
 
 # -------------------------------------------------------------------
 getProteinCodingGeneContent=function(model) {
