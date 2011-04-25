@@ -140,7 +140,7 @@ cat(">> Step 2 of 5: Parameterizing discriminators per sample...\n")
 pp=parameterizeMultiComponentModel(p,dd)
 
 save(p,dd,pp,
-     file=paste("CHECKPOINT",gsub("-","",Sys.Date()),".Rdata",sep="_"),
+     file=paste("CHECKPOINT",p$Project,gsub(" ","_",date()),".Rdata",sep="__"),
      compress=T)
 
 if(p$NormOnly==FALSE) {

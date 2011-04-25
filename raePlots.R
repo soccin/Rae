@@ -74,9 +74,90 @@ plotA0D0=function(p,dd,save="pdf",live=FALSE) {
 	if(!live) dev.off()
 }
 
+loglog <- function(x) {
+  ifelse(x>.25,NA,log(-log(x)))
+}
 
-load("CHECKPOINT.Rdata")
+makeChromPolygons=function(pos,dd,ymin,ymax) { 
+  for(i in seq(1,22,2)) { 
+    x=range(pos[dd$anno$chrom==i])
+    polygon(c(x[1],x[1],x[2],x[2]),c(ymin,ymax,ymax,ymin),col="gray89",border="gray95")
+  } 
+} 
+
+
+plotQ=function(p,dd,save="pdf",live=FALSE) {
+  ## save="pdf"; live=TRUE; load("CHECKPOINT.Rdata"); source("funcs.R")
+  suppressMessages(require(IRanges))
+  suppressMessages(require(plotrix))
+  if(length(which(save%in%c("pdf","png")))==0) {
+    stop("Unsupported plot type, only 'pdf' or 'png' are allowed!")
+  }
+  load(paste(p$Dir,"/",p$Project,"/",p$Project,".Rdata",sep=""))
+  pos=dd$anno$plottable[dd$anno$chrom<=getSpeciesAutosome(p)]
+  rem=which(dd$anno$polymorphic[dd$anno$chrom<=getSpeciesAutosome(p)])
+  ii=apply(cohort$breaks[,6:7],1,function(idx) idx[1]:idx[2])
+  
+  qG=unlist(lapply(1:length(ii),function(idx,cohort,ii) rep(cohort$q[idx,"Gain"],length(ii[[idx]])),cohort,ii))
+  qL=unlist(lapply(1:length(ii),function(idx,cohort,ii) rep(cohort$q[idx,"Loss"],length(ii[[idx]])),cohort,ii))
+  qG[rem]=NA
+  qL[rem]=NA
+  
+  dG=approx(pos,qG,n=length(pos))
+  dG$y[c(1,length(dG$y))]=1
+  dL=approx(pos,qL,n=length(pos))
+  dL$y[c(1,length(dL$y))]=1
+  
+  xRange=c(0,max(max(dL$x),max(dG$x)))
+  
+  scale.loglog=FALSE
+  if(scale.loglog) {
+    plot(dG$x,loglog(dG$y),type='h',col="#880000",
+         ylim=c(-6,6),xlim=xRange,axes=F,xlab="",ylab="q-value")
+    par(new=T)
+    plot(dL$x,-loglog(dL$y),type='h',col="#000088",
+         ylim=c(-6,6),xlim=xRange,axes=F,xlab="",ylab="")
+    
+    yAxis=2*(-3:3)
+    axis(2,at=yAxis,labels=F)
+    for(y in yAxis) {
+      yExp=round(exp(abs(y))/log(10),0)
+      if(y!=0) {
+        text(par("usr")[1],y,call("^",10,-yExp),xpd=TRUE,pos=2,offset=1)
+      } else {
+        text(par("usr")[1],y,call("^",10,0),xpd=TRUE,pos=2,offset=1)
+      }
+    }
+    box()
+    abline(h=0,lwd=3,col=8)
+  } else {
+    plot(dG$x,-log10(dG$y),type='h',col="#880000", xlim=xRange,axes=F,xlab="",ylab="",ylim=c(-16,16))
+    makeChromPolygons(pos,dd,-20,20)
+    
+    lines(dG$x,-log10(dG$y),type='h',col="#880000")
+    lines(dL$x,log10(dL$y),type='h',col="#000088")
+    yAxis=4*(-4:4)
+    axis(2,at=yAxis,labels=F,line=-1.5)
+    for(y in yAxis) {
+      yExp=round(y,0)
+      if(y!=0) {
+        text(par("usr")[1],y,call("^",10,-yExp),xpd=TRUE)
+      } else {
+        text(par("usr")[1],y,call("^",10,0),xpd=TRUE)
+      }
+    }
+
+    xbox=range(pos)
+    ybox=par()$usr[3:4]
+    polygon(c(xbox[1],xbox[1],xbox[2],xbox[2]),c(ybox[1],ybox[2],ybox[2],ybox[1]),lwd=2)
+    mtext("q-value",2,line=2)
+  }
+}
+
+##load("CHECKPOINT.Rdata")
 source("funcs.R")
 
 halt("INTERACTIVE")
 plotA0D0(p,dd,save="png",live=F)
+plotQ(p,dd)
+dev.copy2pdf(file="test.pdf",width=11,height=8.5)
