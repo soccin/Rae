@@ -80,16 +80,16 @@ gatherProjectSegmentation=function(p) {
 	anno$maploc=d$data[,"maploc"]
 	anno$plottable=rep(NA,length(anno$chrom))
 	anno$polymorphic=rep(FALSE,length(anno$chrom))
-	for(i in unique(anno$chrom)) { 
+	for(i in unique(anno$chrom)) {
 		pidx=which(anno$chrom==i)
 		anno$plottable[pidx]=(anno$maploc[pidx]/1000000)+ifelse(i==1,0,sum(chr[1:(i-1)]/1000000))
 		if(grepl("hg",p$Build)) {; # Don't currently have CNV repository for mouse, could build one, but later...
-			probes=IRanges(start=anno$maploc[pidx],end=anno$maploc[pidx])	
+			probes=IRanges(start=anno$maploc[pidx],end=anno$maploc[pidx])
 			poly=IRanges(start=cnv$Start[cnv$Chr==i],end=cnv$End[cnv$Chr==i])
-			anno$polymorphic[pidx[unique(matchMatrix(overlap(poly,probes))[,1])]]=TRUE
+			anno$polymorphic[pidx[unique(matchMatrix(findOverlaps(poly,probes))[,1])]]=TRUE
 		}
 	}
-	
+
 	dd=NULL
 	dd$build=p$Build
 	dd$anno=as.data.frame(anno)
@@ -100,8 +100,8 @@ gatherProjectSegmentation=function(p) {
 	dd$offset=NULL
 	dd$mass_median=NULL
 	dd$diploid_peak_status=NULL
-	
-	if(p$SNP6) bounds=getStartsAndEnds(dd$anno) 
+
+	if(p$SNP6) bounds=getStartsAndEnds(dd$anno)
 	pbound=getStartsAndEndsP(dd$anno)
 
 	out=paste(p$Dir,"/",p$Project,"/cbs-gathered-",p$Project,"-",timeStamp(),sep="")
@@ -109,15 +109,15 @@ gatherProjectSegmentation=function(p) {
 	par(mfrow=c(2,2))
 
 	cat("   >> Processing individual sample-segmentation for",length(cbs),"samples...\n")
-	for(i in 1:length(cbs)) { 
-		cat("        ...",gsub("^.*[/]","",cbs[i]),":",sep="")	
+	for(i in 1:length(cbs)) {
+		cat("        ...",gsub("^.*[/]","",cbs[i]),":",sep="")
 		load(cbs[i])
 		d$output$ID=colnames(d$data)[3]; # Verify segments labeled by sample ID
 		if(p$SNP6) d=extendStartAndEnd(d,bounds); # Handle NA probes when segment boundaries
-		if(nrow(d$data)!=nrow(dd$anno)) { 
+		if(nrow(d$data)!=nrow(dd$anno)) {
 			cat("Samples not all run on the same platform processed similarly!\n")
 			stop("Probe count mismatch!")
-		} 
+		}
 		ds=processCBS(d,p,pbound)
 		dd$data=cbind(dd$data,ds$data[,3,drop=FALSE])
 		dd$segs=cbind(dd$segs,ds$segs[,3,drop=FALSE])
@@ -289,7 +289,7 @@ parameterizeMultiComponentModel=function(p,dd) {
 		plot(xx,ym,main=colnames(ds$rsegs)[i],xlim=c(-2,2),type='l')
 		lines(xx,ydd,col=2,lty=2)
 		lines(xx,yaa,col=2,lty=2)
-	
+
 		parm$Ed0=c(parm$Ed0,Ed0)
 		parm$Ea0=c(parm$Ea0,Ea0)
 		parm$betaD0=c(parm$betaD0,betaD0)
@@ -305,7 +305,7 @@ parameterizeMultiComponentModel=function(p,dd) {
 		parm$SEGN=c(parm$SEGN,segn)
 	}
 	dev.off()
-	
+
 	parm=data.frame(parm)
 	pp=parm
 	save(pp,file=paste(out,".Rdata",sep=""))
@@ -337,7 +337,7 @@ scoreProjectAnalysis=function(p,dd,pp) {
 	colnames(segments)[5]="Empty"
 
 	###
-	### Exclude samples for QC reasons 
+	### Exclude samples for QC reasons
 	###
 
 	cat("   >> Checking for excluded samples...")
@@ -350,7 +350,7 @@ scoreProjectAnalysis=function(p,dd,pp) {
 		samples=samples[-midx]
 		cat("excluding ",length(midx)," samples",sep="")
 	} else {
-		cat("no exclusions")	
+		cat("no exclusions")
 	}
 	cat(", done\n")
 
@@ -371,22 +371,22 @@ scoreProjectAnalysis=function(p,dd,pp) {
 	cat("      >> Scoring low-level gains...")
 	lesions$a0=lapply(indices,function(ii) apply(t(fer(t(dd$segs[ii,mS]),pp$Ea0[mP],pp$betaA0[mP])),2,getWindowWeightedMean))
 	lesions$a0=as.matrix(do.call(rbind,lesions$a0))
-	cat("done!\n")	
-	
+	cat("done!\n")
+
 	cat("      >> Scoring highly-level gains...")
 	lesions$a1=lapply(indices,function(ii) apply(t(ferA1(t(dd$segs[ii,mS]),pp$Ea1[mP],pp$betaA1[mP])),2,getWindowWeightedMean))
 	lesions$a1=as.matrix(do.call(rbind,lesions$a1))
-	cat("done!\n")	
+	cat("done!\n")
 
 	cat("      >> Scoring likely heterozygous losses...")
 	lesions$d0=lapply(indices,function(ii) apply(abs(t(fer(t(dd$segs[ii,mS]),pp$Ed0[mP],pp$betaD0[mP]))),2,getWindowWeightedMean))
 	lesions$d0=as.matrix(do.call(rbind,lesions$d0))
-	cat("done!\n")	
+	cat("done!\n")
 
 	cat("      >> Scoring likely homozygous deletions...")
 	lesions$d1=lapply(indices,function(ii) apply(abs(t(fer(t(dd$segs[ii,mS]),pp$Ed1[mP],pp$betaD1[mP]))),2,getWindowWeightedMean))
 	lesions$d1=as.matrix(do.call(rbind,lesions$d1))
-	cat("done!\n")	
+	cat("done!\n")
 
 	cat("   >> Summarizing scores across breakpoints...")
 	colnames(lesions$a0)=colnames(lesions$a1)=colnames(lesions$d0)=colnames(lesions$d1)=samples
@@ -399,7 +399,7 @@ scoreProjectAnalysis=function(p,dd,pp) {
 	)
 	colnames(cohort$scored)=c("A0","A1","D0","D1")
 	cat("done\n")
-	
+
 	cat("   >> Calculating analytical p-values...")
 	A=sqrt(lesions$a0^2 + lesions$a1^2)
 	D=sqrt(lesions$d0^2 + lesions$d1^2)
@@ -423,14 +423,14 @@ scoreProjectAnalysis=function(p,dd,pp) {
 	}
 	if(length(samples)<20) {
 		cat("   >> WARNING: Likely too few samples in analysis to trust analytical p- and q-values!\n")
-	}	
+	}
 
 	cat("   >> Bootstrapping for error on analytical p-values...")
 	bs=NULL
 	bs$A=NULL
 	bs$D=NULL
 	N=ncol(A)
-	
+
 	rand=lapply(1:100,function(x) sample(1:N,floor(N*0.75)))
 	for(i in 1:length(rand)) {
 		rA=A[,rand[[i]]]
@@ -445,6 +445,10 @@ scoreProjectAnalysis=function(p,dd,pp) {
 	cat("done\n")
 
 	save(cohort,file=paste(p$Dir,"/",p$Project,"/",p$Project,".Rdata",sep=""),compress=T)
+
+	dd$cohort=cohort
+	dd$lesions=lesions
+
 	return(dd)
 }
 
@@ -456,19 +460,19 @@ getRegionsOfInterest=function(p,dd,pp,errorFactor=1) {
 	# Only quiet human polymorphisms
 	if(grepl("hg",p$Build)) cohort=redactCNV(cohort,p)
 
-	# Get significant genomic events 
+	# Get significant genomic events
 	gain=getSignificantRegionsGain(cohort,p)
 	loss=getSignificantRegionsLoss(cohort,p)
 	if(is.null(gain) & is.null(loss)) {
 		cat("There exists no regions of statistically significant aberrations!\n")
 		return(NULL)
 	}
-	
-	# Process the events into regions and peaks	
-	model=list()	
+
+	# Process the events into regions and peaks
+	model=list()
 	if(!is.null(gain)) {
 		results=getStageOneRegions(gain,p)
-		model=processStageResults(p,results,model,gain,errorFactor,"Amp")	
+		model=processStageResults(p,results,model,gain,errorFactor,"Amp")
 	}
 	if(!is.null(loss)) {
 		results=getStageOneRegions(loss,p)
@@ -495,7 +499,7 @@ getRegionsOfInterest=function(p,dd,pp,errorFactor=1) {
 	write.table(
 		model,file=paste(p$Dir,"/",p$Project,"/",p$Project,"-summary-lesions.txt",sep=""),
 		sep="\t",eol="\n",quote=F,row.names=F
-	) 
+	)
 }
 
 # -------------------------------------------------------------------
@@ -508,29 +512,29 @@ getSampleMembership=function(model,dd,pp,perc_arm_len=0.75,min_overlap_len=0.05)
   })
   names(cen)=unique(cyto$Chr)
   model$SamplesWithQualifiedSpanningAlteration=rep(NA,nrow(model))
-  
-                                        # Get segmentation  
+
+                                        # Get segmentation
   seg=dd$output
   seg=seg[!(seg$chrom>getSpeciesAutosome(p)),]
   seg=seg[!(seg$num.mark<3),]
   samples=unique(as.character(as.vector(seg$ID)))
-  
+
                                         # Transform segmentation
   pidx=match(seg$ID,pp$names)
   seg$A0=fer(seg$seg.mean,pp$Ea0[pidx],pp$betaA0[pidx])
   seg$A1=ferA1(seg$seg.mean,pp$Ea1[pidx],pp$betaA1[pidx])
   seg$D0=abs(fer(seg$seg.mean,pp$Ed0[pidx],pp$betaD0[pidx]))
   seg$D1=abs(fer(seg$seg.mean,pp$Ed1[pidx],pp$betaD1[pidx]))
-  
+
                                         # Process regions
   rem=NULL
   for(i in 1:nrow(model)) {
-    
-                                        # Use peak boundaries if they exist, otherwise regional 
+
+                                        # Use peak boundaries if they exist, otherwise regional
     st=ifelse(is.na(model$peak_start[i]),model$region_start[i],model$peak_start[i])
     ed=ifelse(is.na(model$peak_end[i]),model$region_end[i],model$peak_end[i])
     ch=model$chromosome[i]
-    
+
                                         # Segments and samples contributing signal to region
     this=NULL
     if(model$model[i]=="Amp") {
@@ -542,7 +546,6 @@ getSampleMembership=function(model,dd,pp,perc_arm_len=0.75,min_overlap_len=0.05)
       model$SamplesWithQualifiedSpanningAlteration[i]=NA
       rem=c(rem,i)
     }
-    print("OK 544")
     size=this$loc.end-this$loc.start+1
     arm=ifelse(st>=cen[ch],length(Genome[[ch]])-cen[ch],cen[ch])
     this=this[!(size/arm)>perc_arm_len,]
@@ -552,7 +555,6 @@ getSampleMembership=function(model,dd,pp,perc_arm_len=0.75,min_overlap_len=0.05)
     fin=unlist(lapply(samp,function(s,this,ov) sum(ov[this$ID==s]),this,ov))
     model$SamplesWithQualifiedSpanningAlteration[i]=paste(samp[(fin/(ed-st+1))>min_overlap_len],collapse=",")
   }
-  print("OK 554")
   if(length(rem)>0) model=model[-rem,]
   return(model)
 }
@@ -561,7 +563,7 @@ getSampleMembership=function(model,dd,pp,perc_arm_len=0.75,min_overlap_len=0.05)
 getProteinCodingGeneContent=function(model) {
 	isoforms=do.call(RangesList,lapply(unique(model$chromosome),function(ch) {
 		idx=which(feat$Type=="Gene" & feat$Chr==ch)
-		IRanges(start=feat$Start[idx],end=feat$End[idx],names=feat$Name[idx])   
+		IRanges(start=feat$Start[idx],end=feat$End[idx],names=feat$Name[idx])
 	}))
 	model=getGenicContent(model,isoforms)
 	N=ncol(model)
@@ -573,7 +575,7 @@ getProteinCodingGeneContent=function(model) {
 getNoncodingGeneContent=function(model) {
 	isoforms=do.call(RangesList,lapply(unique(model$chromosome),function(ch) {
 		idx=which(feat$Type=="MicroRNA" & feat$Chr==ch)
-		IRanges(start=feat$Start[idx],end=feat$End[idx],names=feat$Name[idx])   
+		IRanges(start=feat$Start[idx],end=feat$End[idx],names=feat$Name[idx])
 	}))
 	model=getGenicContent(model,isoforms)
 	model$content[grep("Nearest",model$content)]="None"
@@ -585,13 +587,13 @@ getNoncodingGeneContent=function(model) {
 # -------------------------------------------------------------------
 getGenicContent=function(model,isoforms) {
 	chr_idx=match(model$chromosome,unique(model$chromosome))
-	for(i in 1:nrow(model)) { 
+	for(i in 1:nrow(model)) {
 		region=IRanges(
-			start=ifelse(is.na(model$peak_start[i]),model$region_start[i],model$peak_start[i]), 
+			start=ifelse(is.na(model$peak_start[i]),model$region_start[i],model$peak_start[i]),
 			end=ifelse(is.na(model$peak_end[i]),model$region_end[i],model$peak_end[i])
-		) 
-		found=matchMatrix(overlap(isoforms[[chr_idx[i]]],region))[,2]
-		if(length(found)>0) { 
+		)
+		found=matchMatrix(findOverlaps(isoforms[[chr_idx[i]]],region))[,2]
+		if(length(found)>0) {
 			content=unique(gsub("^.*:","",names(isoforms[[chr_idx[i]]])[found]))
 			model$n_content[i]=length(content)
 			# Arbitrary gene count to redact to prevent large gene lists in output
@@ -600,33 +602,33 @@ getGenicContent=function(model,isoforms) {
 			closest=gsub("^.*:","",names(isoforms[[chr_idx[i]]])[nearest(region,isoforms[[chr_idx[i]]])])
 			model$n_content[i]=0
 			model$content[i]=paste("[Nearest:",closest,"]",sep="")
-		} 
-	} 
+		}
+	}
 	return(model)
 }
 
 # -------------------------------------------------------------------
 getEventFrequency=function(model,cohort,lesions,thr0,thr1) {
 	N=ncol(lesions$a0)
-	for(i in 1:nrow(model)) { 
+	for(i in 1:nrow(model)) {
 		bidx=which(
-			cohort$breaks[,1]==model$chromosome[i] & 
-			cohort$breaks[,2]>=ifelse(is.na(model$peak_start[i]),model$region_start[i],model$peak_start[i]) & 
+			cohort$breaks[,1]==model$chromosome[i] &
+			cohort$breaks[,2]>=ifelse(is.na(model$peak_start[i]),model$region_start[i],model$peak_start[i]) &
 			cohort$breaks[,3]<=ifelse(is.na(model$peak_end[i]),model$region_end[i],model$peak_end[i])
-		) 
+		)
 		status0=NULL
 		status1=NULL
 		if(model$model[i]=="Amp") {
 			status0=apply(lesions$a0[bidx,,drop=F],2,max)>=thr0
 			status1=apply(lesions$a1[bidx,,drop=F],2,max)>=thr1
-		} else { 
+		} else {
 			status0=apply(lesions$d0[bidx,,drop=F],2,max)>=thr0
 			status1=apply(lesions$d1[bidx,,drop=F],2,max)>=thr1
 		}
 		model$freqX0[i]=sprintf("%.1f",(sum(status0,na.rm=T)/N)*100)
 		model$freqX1[i]=sprintf("%.1f",(sum(status1,na.rm=T)/N)*100)
 		model$SamplesWithSpanningAlteration[i]=paste(unique(names(which(status0)),names(which(status1))),collapse=",")
-	} 
+	}
 	return(model)
 }
 
@@ -638,7 +640,7 @@ processStageResults=function(p,results,model,base,errorFactor,flag) {
 		#rev=isCentromeric(cen[results[j,1],2],results[j,1],results[j,2],results[j,3],cohort$breaks)
 		#model$region_start=c(model$region_start,rev$REVSTART)
 		#model$region_end=c(model$region_end,rev$REVEND)
-		model$region_start=c(model$region_start,results[j,2])	
+		model$region_start=c(model$region_start,results[j,2])
 		model$region_end=c(model$region_end,results[j,3])
 		model$peak_start=c(model$peak_start,NA)
 		model$peak_end=c(model$peak_end,NA)
@@ -658,20 +660,20 @@ processStageResults=function(p,results,model,base,errorFactor,flag) {
 				model$q_value=c(model$q_value,pks[k,10])
 			}
 		}
-	}	
+	}
 	return(model)
 }
-	
+
 # -------------------------------------------------------------------
 # Map 'likely' alteration types from breakpoints to genes in
 # individual tumors. Done on the BSgenome (TBD) version of genes unless
-# a absolute file path is provided to the geneSet parameter. This 
+# a absolute file path is provided to the geneSet parameter. This
 # file must have have columns: name, chr, start, end.
 # (add microRNAs??)
 # -------------------------------------------------------------------
 
 writeGeneMap=function(p,geneSet=NULL,genes=NULL,removePolymorhic=FALSE) {
-	# Load gene data.	
+	# Load gene data.
 	if(is.null(geneSet)) {
 		genes=feat[feat$Type=="Gene" | feat$Type=="MicroRNA",]
 	} else {
@@ -683,14 +685,14 @@ writeGeneMap=function(p,geneSet=NULL,genes=NULL,removePolymorhic=FALSE) {
 	}
 	genes=genes[order(genes$Chr,genes$Start),]
 	genes=genes[!(genes$Chr>getSpeciesAutosome(p)),]
-	
-	# Load project data	
+
+	# Load project data
 	load(paste(p$Dir,"/",p$Project,"/",p$Project,"-lesions.Rdata",sep=""))
 	load(paste(p$Dir,"/",p$Project,"/",p$Project,".Rdata",sep=""))
 	rownames(cohort$breaks)=paste("chr",cohort$breaks[,1],":",cohort$breaks[,2],"-",cohort$breaks[,3],sep="")
 	p$A0=p$D0=p$D1=0.9
 	p$A1=0.25
-	
+
 	# Find breakpoints overlapping isoforms
 	breaks=do.call(RangesList,lapply(1:getSpeciesAutosome(p),function(ch) {
 		idx=which(cohort$breaks[,1]==ch)
@@ -699,7 +701,7 @@ writeGeneMap=function(p,geneSet=NULL,genes=NULL,removePolymorhic=FALSE) {
 	isoforms=do.call(RangesList,lapply(1:getSpeciesAutosome(p),function(ch) {
 		IRanges(start=genes$Start[genes$Chr==ch],end=genes$End[genes$Chr==ch],names=genes$Name[genes$Chr==ch])
 	}))
-	cov=lapply(1:getSpeciesAutosome(p),function(ch) matchMatrix(overlap(isoforms[[ch]],breaks[[ch]])))
+	cov=lapply(1:getSpeciesAutosome(p),function(ch) matchMatrix(findOverlaps(isoforms[[ch]],breaks[[ch]])))
 
 	# Fill in for genes with missing coverage by nearest neighbor
 	cov=lapply(1:getSpeciesAutosome(p),function(ch) {
@@ -717,7 +719,7 @@ writeGeneMap=function(p,geneSet=NULL,genes=NULL,removePolymorhic=FALSE) {
 		match(map[,1],rownames(cohort$breaks)),
 		match(map[,2],genes$Name)
 	)
-	
+
 	# Assign gene status, extremal signal for multiple overlapping (intragenic) breakpoints
 	cna=lapply(map,assignGeneStatus,p,lesions)
 	cna=t(as.data.frame(cna))
@@ -756,14 +758,14 @@ plotGenome=function(p,dd,save="pdf",live=FALSE) {
 		} else {
 			png(file=paste(p$Dir,"/",p$Project,"/",p$Project,".png",sep=""),width=450,height=375)
 		}
-	} 
+	}
 
-	makeChromPolygons=function(pos,dd,ymin,ymax) { 
-		for(i in seq(1,22,2)) { 
+	makeChromPolygons=function(pos,dd,ymin,ymax) {
+		for(i in seq(1,22,2)) {
 			x=range(pos[dd$anno$chrom==i])
 			polygon(c(x[1],x[1],x[2],x[2]),c(ymin,ymax,ymax,ymin),col="gray89",border="gray89")
-		} 
-	} 
+		}
+	}
 
 	layout(matrix(c(1,1,2,2,3,3,4,4),4,2,byrow=T),widths=rep(1,4),heights=c(0.33,0.165,0.165,0.33))
 	par(xaxs="i",yaxs="i")
@@ -777,14 +779,14 @@ plotGenome=function(p,dd,save="pdf",live=FALSE) {
 	idx=which(dG$y<1e-20)
 	lines(dG$x[idx],dG$y[idx],type="h",col="red3")
 	axis(2,at=yhigh,labels=ylab,las=2,cex.axis=0.8)
-	axis.break(2,1e-40)
+	#axis.break(2,1e-40)
 	par(mar=c(0,5,0,0.1))
 	plot(1,1,type="n",xlim=range(dG$x),ylim=rev(range(ybase)),log="y",axes=FALSE,ylab="",xlab="")
-	makeChromPolygons(pos,dd,1,1e-20) 
+	makeChromPolygons(pos,dd,1,1e-20)
 	idx=which(dG$y>=0.9)
 	lines(dG$x[-idx],dG$y[-idx],type="h",col="red3")
 	axis(2,at=ybase,las=2,cex.axis=0.8)
-	
+
 	par(mar=c(0,5,0,0.1))
 	plot(1,1,type="n",xlim=range(dL$x),ylim=-log10(range(ybase)),axes=FALSE,ylab="",xlab="")
 	makeChromPolygons(pos,dd,0,20)
@@ -803,7 +805,7 @@ plotGenome=function(p,dd,save="pdf",live=FALSE) {
 	idx=which(dL$y<1e-20)
 	lines(dL$x[idx],-log10(dL$y[idx]),type="h",col="darkblue")
 	axis(2,at=-log10(yhigh),labels=ylab,las=2,cex.axis=0.8)
-	axis.break(2,40)
+	#axis.break(2,40)
 	if(!live) dev.off()
 }
 
@@ -848,9 +850,9 @@ plotGenome2=function(p,dd,save="pdf",live=FALSE) {
 	#axis(2,at=ax[round(seq(idx[1],idx[2],length=5))],las=2,cex.axis=0.8)
 	ax=10^-round(seq(0,ceiling(-log10(as.numeric(sprintf("%.1g",min(dG$y))))),length=5))
 	axis(2,at=ax,las=2,cex.axis=0.8)
-	lines(range(dG$x),c(1,1),lwd=2)	
-	
-	ylim=c(min(dL$y),1)	
+	lines(range(dG$x),c(1,1),lwd=2)
+
+	ylim=c(min(dL$y),1)
 	plot(1,1,type="n",xlim=range(dL$x),ylim=ylim,log="y",axes=FALSE,ylab="Q-value (loss)",xlab="")
 	for(i in seq(1,22,2)) {
 		x=range(pos[dd$anno$chrom==i])
@@ -862,7 +864,7 @@ plotGenome2=function(p,dd,save="pdf",live=FALSE) {
 	#axis(2,at=ax[round(seq(idx[1],idx[2],length=5))],las=2,cex.axis=0.8)
 	ax=10^-round(seq(0,ceiling(-log10(as.numeric(sprintf("%.1g",min(dL$y))))),length=5))
 	axis(2,at=ax,las=2,cex.axis=0.8)
-	lines(range(dL$x),c(1,1),lwd=2)	
+	lines(range(dL$x),c(1,1),lwd=2)
 	if(!live) dev.off()
 }
 
@@ -889,7 +891,7 @@ assignGeneStatus=function(bidx,p,lesions) {
 		gain=getDiscretizedValue(lesions$a0[bidx,],lesions$a1[bidx,],p$A0,p$A1)
 		loss=getDiscretizedValue(lesions$d0[bidx,],lesions$d1[bidx,],p$D0,p$D1)
 		return(ifelse(gain>loss,gain,-loss))
-	} 
+	}
 }
 
 # -------------------------------------------------------------------
@@ -1001,7 +1003,7 @@ getBreakpointCoverage=function(pos,breaks) {
 	chr=pos[1]
 	st=pos[2]
 	ed=pos[3]
-	
+
 	if(ed<cohort$breaks[min(which(breaks[,1]==chr)),2]) {
 		return(min(which(breaks[,1]==chr))); # Is 5' of coverage (telomeric)
 	}
@@ -1077,7 +1079,7 @@ getExcludedSamples=function(pp,p,LOG=FALSE) {
 
 	stats2=stats::fivenum(log10(pp$SEGN),na.rm=T)
 	sn2=stats2[2]-1.5*diff(stats2[c(2,4)])
-	
+
 	### Find samples to exclude
 	rem=which(is.na(pp$Ed0) | (log10(pp$SN.fwhm)<sn1) | (log10(pp$SEGN)<sn2))
 
@@ -1094,7 +1096,7 @@ getExcludedSamples=function(pp,p,LOG=FALSE) {
 		reasons[(log10(ex$SEGN)<sn2)]="High segmentation noise (low adjacent signal jumps amid high DN)"
 		for(i in 1:nrow(ex)) cat(as.character(ex$names[i]),"\t",reasons[i],"\n",sep="")
 	}
-	
+
 	### Exclude
 	if(length(rem)) {
 		return(list(status=TRUE,samples=as.character(as.vector(pp$names[rem]))))
@@ -1152,7 +1154,7 @@ getProcessedBreakpoints=function(p,samples,segments,anno,cleave=FALSE) {
 				nidx=isolated+1
 				windows[nidx,1]=windows[isolated,1]
 				windows[nidx,5]=windows[nidx,5]+1
-				windows[nidx,3]=windows[nidx,3]-1 
+				windows[nidx,3]=windows[nidx,3]-1
 				windows=windows[-isolated,]
 			}
 		}
@@ -1227,7 +1229,7 @@ redactCNV=function(cohort,p) {
 		brks=IRanges(start=cohort$breaks[idx,2],end=cohort$breaks[idx,3])
 		poly=IRanges(start=cnv$Start[cnv$Chr==ch],end=cnv$End[cnv$Chr==ch])
 		cov1=lapply(1:length(brks),function(b) coverage(poly,shift=-start(brks[b,])+1,width=width(brks[b,])))
-		cov2=unlist(lapply(cov1,function(cc) sum(width(slice(cc,lower=1,includeLower=TRUE)))/length(cc)))	
+		cov2=unlist(lapply(cov1,function(cc) sum(width(slice(cc,lower=1,includeLower=TRUE)))/length(cc)))
 		polymorphic=c(polymorphic,idx[cov2>0.5])
 	}
 
@@ -1239,7 +1241,7 @@ redactCNV=function(cohort,p) {
 		IRanges(start=som,end=som)
 	)]
 
-	# Reset the q-values for the polymorphic regions to equal the 
+	# Reset the q-values for the polymorphic regions to equal the
 	# significance of the nearest somatic region.
 	cohort$q[polymorphic,1]=cohort$q[near,1]
 	cohort$q[polymorphic,2]=cohort$q[near,2]
@@ -1307,7 +1309,7 @@ getStageOneRegions=function(sig,p) {
 # -------------------------------------------------------------------
 getStageTwoPeaks=function(p,locus,sig,errorFactor=1,shoulder=2) {
 	options(warn=-1000)
-	hasPeaks=FALSE  
+	hasPeaks=FALSE
 	loc=splitLocus(locus)
 	id=locus
 
@@ -1315,7 +1317,7 @@ getStageTwoPeaks=function(p,locus,sig,errorFactor=1,shoulder=2) {
 	pad=-log10(max(sig$Q[which(sig$Q<=p$Qval/10)]))
 	sig$Q=-log10(sig$Q)
 	#sig$Delta=-log10(sig$Delta)
-	
+
 	trace=sig$Q[ii]
 	trace=c(pad,trace,pad)
 	trace[trace<pad]=pad
@@ -1397,7 +1399,7 @@ getStartsAndEnds=function(anno) {
 	st=sapply(chr,function(ch) min(anno[anno[,1]==ch,2]))
 	ed=sapply(chr,function(ch) max(anno[anno[,1]==ch,2]))
 	return(list(Chr=chr,Starts=st,Ends=ed))
-} 
+}
 getStartsAndEndsP=function(anno) {
   chr=unique(anno[,1])
   idx=sapply(chr,function(ch) range(which(anno[,1]==ch)))
@@ -1439,7 +1441,7 @@ getWindowWeightedMean=function(samp) {
 # -------------------------------------------------------------------
 isCentromeric=function(centro,chr,st,ed,breaks) {
 	if(st<centro & centro<ed) {; # Region spans the centromere
-		cidx=which(breaks[,1]==chr & breaks[,2]<=centro & breaks[,3]>=centro) 
+		cidx=which(breaks[,1]==chr & breaks[,2]<=centro & breaks[,3]>=centro)
 		if(length(cidx)==0) {
 			if((ed-centro+1)>(centro-st+1)) {
 				cidx=min(which(breaks[,1]==chr & breaks[,2]>=centro))
@@ -1448,7 +1450,7 @@ isCentromeric=function(centro,chr,st,ed,breaks) {
 			}
 		}
 		psize=centro-st+1
-		qsize=ed-centro+1   
+		qsize=ed-centro+1
 		if(qsize>psize) {
 			return(list(REVSTART=breaks[cidx+1,2],REVEND=ed))
 		} else {
@@ -1467,7 +1469,7 @@ mergeSegments=function(d,limit) {
 	ds=d
 	rem=which(d$output$num.mark<limit); # Candidate segments to merge
 	chr=unique(d$output$chrom[rem]); # Chromsomes on which mergeable segments appear
-	
+
 	for(i in chr) {; # Merge is done on a per-chromosome basis
 		ridx=rem[which(d$output$chrom[rem]==i)]
 		st=d$output$loc.start[ridx]
@@ -1476,17 +1478,17 @@ mergeSegments=function(d,limit) {
 		if(ridx[1]==1) prime5seg=c(-99999999,prime5seg); # Ensure first segment maps to 3'
 		prime3seg=d$output$loc.start[(ridx+1)]; # The start breakpoint of the 3' segment
 		near=(st-prime5seg)<(prime3seg-ed)
-		
+
 		# If last sement in sample is <limit, merge to 5' adjacent segment
 		if(max(ridx)==nrow(d$output)) near[length(near)]=TRUE
-		
+
 		# For those closer to the 5' adjacent segment, reset 3' breakpoint and probe counts
 		nidx=ridx[near==T]-1
 		ds$output$loc.end[nidx]=d$output$loc.end[ridx[near==T]]
 		ds$output$num.mark[nidx]=ds$output$num.mark[nidx]+d$output$num.mark[ridx[near==T]]
 		probes=lapply(ridx[near==T],function(rr) d$output$start.idx[rr]:d$output$end.idx[rr])
 		ds$segs[unlist(probes),3]=rep(ds$output$seg.mean[nidx],lapply(probes,length))
-		
+
 		# For those closer to the 3' adjacent segment, reset 5' breakpoint and probe counts
 		nidx=ridx[near==F]+1
 		ds$output$loc.start[nidx]=d$output$loc.start[ridx[near==F]]
@@ -1547,8 +1549,8 @@ processCBS=function(d,p,pbound) {
 		seg=rep(NA,nrow(d$data))
 		for(i in seq(nrow(d$output))) {
 			rr=(
-				d$data$chrom==d$output$chrom[i] & 
-				d$data$maploc>=d$output$loc.start[i] & 
+				d$data$chrom==d$output$chrom[i] &
+				d$data$maploc>=d$output$loc.start[i] &
 				d$data$maploc<=d$output$loc.end[i]
 			)
 			seg[rr]=d$output$seg.mean[i]
@@ -1569,10 +1571,10 @@ processCBS=function(d,p,pbound) {
 	if(p$SNP6) d=mergeSegments(d,8)
 	d$dn=median(abs(diff(d$data[,3])),na.rm=TRUE); # Derivative noise
 	ds=compute.rsegs(d); # Gaussian-noised segmentation
-	q=quantile(ds$rsegs[,3],probs=c(0.2,0.8),na.rm=TRUE); # Mass of the data 
+	q=quantile(ds$rsegs[,3],probs=c(0.2,0.8),na.rm=TRUE); # Mass of the data
 	m=median(ds$rsegs[(ds$rsegs[,3]>=q[1] & ds$rsegs[,3]<=q[2]),3],na.rm=TRUE); # Trimmed median
 	d$mass_median=m
-	d$segs[,3]=d$segs[,3]-m; # Center by the mass of the data 
+	d$segs[,3]=d$segs[,3]-m; # Center by the mass of the data
 	d$data[,3]=d$data[,3]-m; # Center by the mass of the data
 	P.norm=density(d$segs[,3],bw=d$dn/8,from=-d$dn/2,to=d$dn/2,na.rm=T); # Segmentation density
 	kk=get.diploid.peak(P.norm); # Detect position of the diploid peak
@@ -1625,21 +1627,21 @@ xcdf=function(x,v) return(sum(v<x)/length(v))
 
 # -------------------------------------------------------------------
 overlap2=function(w1,w2,v1,v2) {
-	if ((w1>w2) || (v1>v2)) { 
+	if ((w1>w2) || (v1>v2)) {
 		stop("Your intervals are improperly defined.")
-	} 
-	if ((w2<v1) || (v2<w1)) { 
+	}
+	if ((w2<v1) || (v2<w1)) {
 		return(0)
-	} else if ((w2<=v2) && (w1>=v1)) { 
+	} else if ((w2<=v2) && (w1>=v1)) {
 		return(w2-w1)
-	} else if ((v2<=w2) && (v1>=w1)) { 
+	} else if ((v2<=w2) && (v1>=w1)) {
 		return(v2-v1)
-	} else if ((v1<=w1) && (w1<=v2)) { 
+	} else if ((v1<=w1) && (w1<=v2)) {
 		return(v2-w1)
-	} else if ((w2<=v2) && (w1>=v1)) { 
+	} else if ((w2<=v2) && (w1>=v1)) {
 		return(w2-w1)
-	} else if ((w1<=v1) && (v1<=w2)) { 
+	} else if ((w1<=v1) && (v1<=w2)) {
 		return(w2-v1)
-	} 
+	}
 }
 
