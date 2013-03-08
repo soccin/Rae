@@ -21,7 +21,7 @@ p$SNP6=FALSE
 p$Dir=getwd()
 p$NormOnly=FALSE
 
-# Verify that at least required parameters and their values are passed 
+# Verify that at least required parameters and their values are passed
 if(length(args)<3) {
 	cat(usage)
 	stop("Incorrect or missing required input!")
@@ -91,23 +91,23 @@ required="\n  Required packages:
     BSgenome.Mmusculus.UCSC.mm9
     IRanges\n
 "
-if(!suppressMessages(library(DNAcopy,logical.return=TRUE)) | 
-	 !suppressMessages(library(Biostrings,logical.return=TRUE)) | 
+if(!suppressMessages(library(DNAcopy,logical.return=TRUE)) |
+	 !suppressMessages(library(Biostrings,logical.return=TRUE)) |
 	 !suppressMessages(library(BSgenome,logical.return=TRUE))) {
 		cat(required)
 		stop("Required packages are not installed!")
 }
 
 if(p$Build=="hg18") {
-	if(!suppressMessages(library(BSgenome.Hsapiens.UCSC.hg18,logical.return=TRUE))) { 
+	if(!suppressMessages(library(BSgenome.Hsapiens.UCSC.hg18,logical.return=TRUE))) {
 			cat(required)
 			stop("Required packages are not installed!")
 	}
 	Genome=Hsapiens
 }
 
-if(p$Build=="mm9") { 
-	if(!suppressMessages(library(BSgenome.Mmusculus.UCSC.mm9,logical.return=TRUE))) { 
+if(p$Build=="mm9") {
+	if(!suppressMessages(library(BSgenome.Mmusculus.UCSC.mm9,logical.return=TRUE))) {
 			cat(required)
 			stop("Required packages are not installed!")
 	}
@@ -139,9 +139,9 @@ dd=gatherProjectSegmentation(p)
 cat(">> Step 2 of 5: Parameterizing discriminators per sample...\n")
 pp=parameterizeMultiComponentModel(p,dd)
 
-save(p,dd,pp,
-     file=paste("CHECKPOINT",p$Project,gsub(" ","_",date()),".Rdata",sep="__"),
-     compress=T)
+#save(p,dd,pp,
+#     file=paste("CHECKPOINT",p$Project,gsub(" ","_",date()),".Rdata",sep="__"),
+#     compress=T)
 
 if(p$NormOnly==FALSE) {
 	cat(">> Step 3 of 5: Scoring and assessing the recurrence of alterations...\n")
@@ -168,4 +168,6 @@ cat("Finished...\n")
 cat("Elapsed (seconds): ",as.numeric((ended-started)[3]),"\n",sep="")
 cat("Elapsed (hrs): ",as.numeric((ended-started)[3])/3600,"\n",sep="")
 cat("--------------------------------------------------------------\n")
+
+save.image(file="raeImage.Rdata")
 
