@@ -1,3 +1,14 @@
+write.xls <- function(dd,filename,row.names=T,col.names=NA) {
+  if (!is.data.frame(dd)) {
+    dd <- data.frame(dd,check.names=F)
+  }
+  if(!row.names) {
+    col.names=T
+  }
+  write.table(dd,file=filename,sep="\t",quote=FALSE,
+              col.names=col.names,row.names=row.names)
+}
+
 fer=function(E,Eo=0.5,b=25) return(1/(1+exp(-b*(E-Eo))))
 ferA1=function(x,Eo,B=1/log(2)) return(theta(x,Eo)*((2*fer(x,Eo,B))-1))
 p=list()
@@ -86,7 +97,7 @@ for(chrom in seq(fp)) {
 
     bi=list()
     for(i in seq(ncol(s0))){
-        bi[[i]]=unlist(sapply(idx,function(x){if(len(x)>0){s0[bMap[x],i]}else{NA}}))
+        bi[[i]]=unlist(sapply(idx,function(x){if(length(x)>0){s0[bMap[x],i]}else{NA}}))
     }
     bx=do.call(cbind,bi)
 
