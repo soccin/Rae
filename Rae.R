@@ -151,7 +151,7 @@ if(p$NormOnly==FALSE) {
 	try({getRegionsOfInterest(p,dd,pp,errorFactor=0.25)})
 
 	cat(">> Step 5 of 5: Plotting output...\n")
-	plotGenome(p,dd,save="pdf")
+	try({plotGenome(p,dd,save="pdf")})
 
 	if(grepl("hg",p$Build)) {
 		cat(">> Writing gene/tumor map...\n")
