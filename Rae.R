@@ -1,5 +1,14 @@
 #!/usr/local/R.2.9.2/bin/Rscript --no-save
 
+if(!as.numeric(R.version$minor)<13 | !as.numeric(R.version$major)<2.9){
+	cat("\n\n")
+	cat("Wrong version of R\n")
+	cat("Current Version",paste(R.version$major,R.version$minor,sep="."),"\n")
+	cat("needs to be 2.12 or less\n")
+	cat("\n\n")
+	stop("INVALID R VERSION")
+}
+
 source("funcs.R")
 args=commandArgs(TRUE)
 
