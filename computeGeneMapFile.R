@@ -69,23 +69,25 @@ for(chrom in seq(fp)) {
     # First assign calls for genes that span multiple probes
 
     multiProbes=names(which(table(fp[[chrom]]@queryHits)>1))
-    idx=lapply(multiProbes,function(x){fp[[chrom]]@subjectHits[fp[[chrom]]@queryHits==as.numeric(x)]})
-    si=list()
-    for(i in seq(ncol(dd$segs))) {
-        cat(i,",")
-        si[[i]]=sapply(idx,function(x){
-                median(dd$segs[pMap[x],i],na.rm=T)
-                })
+    if(len(multiProbes)>0){
+        idx=lapply(multiProbes,function(x){fp[[chrom]]@subjectHits[fp[[chrom]]@queryHits==as.numeric(x)]})
+        si=list()
+        for(i in seq(ncol(dd$segs))) {
+            cat(i,",")
+            si[[i]]=sapply(idx,function(x){
+                    median(dd$segs[pMap[x],i],na.rm=T)
+                    })
+        }
+        sx=do.call(cbind,si)
+
+        a0=t(apply(sx,1,function(x){fer(x,pp$Ea0,pp$betaA0)}))
+        a1=t(apply(sx,1,function(x){ferA1(x,pp$Ea1,pp$betaA1)}))
+        d0=t(apply(sx,1,function(x){abs(fer(x,pp$Ed0,pp$betaD0))}))
+        d1=t(apply(sx,1,function(x){abs(fer(x,pp$Ed1,pp$betaD1))}))
+        raeTmp=ifelse(sx>0,ifelse(a1>.25,2,ifelse(a0>.9,1,0)),ifelse(d1>.9,-2,ifelse(d0>.9,-1,0)))
+
+        raeChrom[as.numeric(multiProbes),]=raeTmp
     }
-    sx=do.call(cbind,si)
-
-    a0=t(apply(sx,1,function(x){fer(x,pp$Ea0,pp$betaA0)}))
-    a1=t(apply(sx,1,function(x){ferA1(x,pp$Ea1,pp$betaA1)}))
-    d0=t(apply(sx,1,function(x){abs(fer(x,pp$Ed0,pp$betaD0))}))
-    d1=t(apply(sx,1,function(x){abs(fer(x,pp$Ed1,pp$betaD1))}))
-    raeTmp=ifelse(sx>0,ifelse(a1>.25,2,ifelse(a0>.9,1,0)),ifelse(d1>.9,-2,ifelse(d0>.9,-1,0)))
-
-    raeChrom[as.numeric(multiProbes),]=raeTmp
 
     # Then genes that span one or less probes take block value (s0) for call
 
