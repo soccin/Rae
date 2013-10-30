@@ -69,7 +69,7 @@ for(chrom in seq(fp)) {
     # First assign calls for genes that span multiple probes
 
     multiProbes=names(which(table(fp[[chrom]]@queryHits)>1))
-    if(len(multiProbes)>0){
+    if(length(multiProbes)>0){
         idx=lapply(multiProbes,function(x){fp[[chrom]]@subjectHits[fp[[chrom]]@queryHits==as.numeric(x)]})
         si=list()
         for(i in seq(ncol(dd$segs))) {
