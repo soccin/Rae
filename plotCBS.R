@@ -1,3 +1,4 @@
+options(error=traceback)
 library(DNAcopy)
 args=commandArgs(trailing=T)
 
