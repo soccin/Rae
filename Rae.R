@@ -1,4 +1,6 @@
-#!/usr/local/R.2.9.2/bin/Rscript --no-save
+# #!/usr/local/R.2.9.2/bin/Rscript --no-save
+
+options(error=traceback)
 
 if(!as.numeric(R.version$minor)<13 | !as.numeric(R.version$major)<2.9){
 	cat("\n\n")
@@ -157,7 +159,9 @@ if(p$NormOnly==FALSE) {
 	dd=scoreProjectAnalysis(p,dd,pp)
 
 	cat(">> Step 4 of 5: Selecting regions of interest...\n")
-	try({getRegionsOfInterest(p,dd,pp,errorFactor=0.25)})
+	#try({getRegionsOfInterest(p,dd,pp,errorFactor=0.25)})
+	#options(error = quote({dump.frames(to.file=TRUE); q()}))
+	getRegionsOfInterest(p,dd,pp,errorFactor=0.25)
 
 	cat(">> Step 5 of 5: Plotting output...\n")
 	try({plotGenome(p,dd,save="pdf")})
