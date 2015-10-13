@@ -4,6 +4,8 @@
 ###
 #####################################################################
 
+options(error=traceback)
+
 # --------------------------------------------------------------------
 canWrite=function(path) {
 	res=(file.access(path,mode=2)==0)
@@ -513,20 +515,19 @@ getSampleMembership=function(model,dd,pp,perc_arm_len=0.75,min_overlap_len=0.05)
   names(cen)=unique(cyto$Chr)
   model$SamplesWithQualifiedSpanningAlteration=rep(NA,nrow(model))
 
-                                        # Get segmentation
+									# Get segmentation
   seg=dd$output
   seg=seg[!(seg$chrom>getSpeciesAutosome(p)),]
   seg=seg[!(seg$num.mark<3),]
   samples=unique(as.character(as.vector(seg$ID)))
 
-                                        # Transform segmentation
+	  								# Transform segmentation
   pidx=match(seg$ID,pp$names)
   seg$A0=fer(seg$seg.mean,pp$Ea0[pidx],pp$betaA0[pidx])
   seg$A1=ferA1(seg$seg.mean,pp$Ea1[pidx],pp$betaA1[pidx])
   seg$D0=abs(fer(seg$seg.mean,pp$Ed0[pidx],pp$betaD0[pidx]))
   seg$D1=abs(fer(seg$seg.mean,pp$Ed1[pidx],pp$betaD1[pidx]))
 
-                                        # Process regions
   rem=NULL
   for(i in 1:nrow(model)) {
 
@@ -542,18 +543,19 @@ getSampleMembership=function(model,dd,pp,perc_arm_len=0.75,min_overlap_len=0.05)
     } else {
       this=seg[which(seg$chrom==ch & seg$loc.end>=st & seg$loc.start<=ed & seg$D0>=0.9),]
     }
-    if(nrow(this)==0) {
+	size=this$loc.end-this$loc.start+1
+  	arm=ifelse(st>=cen[ch],length(Genome[[ch]])-cen[ch],cen[ch])
+  	this=this[!(size/arm)>perc_arm_len,]
+  	this=this[order(this$ID),]
+  	if(nrow(this)==0) {
       model$SamplesWithQualifiedSpanningAlteration[i]=NA
       rem=c(rem,i)
+    } else {
+      ov=sapply(1:nrow(this),function(ii,this,st,ed) overlap2(st,ed,this$loc.start[ii],this$loc.end[ii]),this,st,ed)
+      samp=unique(this$ID)
+      fin=unlist(lapply(samp,function(s,this,ov) sum(ov[this$ID==s]),this,ov))
+      model$SamplesWithQualifiedSpanningAlteration[i]=paste(samp[(fin/(ed-st+1))>min_overlap_len],collapse=",")
     }
-    size=this$loc.end-this$loc.start+1
-    arm=ifelse(st>=cen[ch],length(Genome[[ch]])-cen[ch],cen[ch])
-    this=this[!(size/arm)>perc_arm_len,]
-    this=this[order(this$ID),]
-    ov=sapply(1:nrow(this),function(ii,this,st,ed) overlap2(st,ed,this$loc.start[ii],this$loc.end[ii]),this,st,ed)
-    samp=unique(this$ID)
-    fin=unlist(lapply(samp,function(s,this,ov) sum(ov[this$ID==s]),this,ov))
-    model$SamplesWithQualifiedSpanningAlteration[i]=paste(samp[(fin/(ed-st+1))>min_overlap_len],collapse=",")
   }
   if(length(rem)>0) model=model[-rem,]
   return(model)
@@ -1627,6 +1629,7 @@ xcdf=function(x,v) return(sum(v<x)/length(v))
 
 # -------------------------------------------------------------------
 overlap2=function(w1,w2,v1,v2) {
+	#print(c(w1,w2,v1,v2))
 	if ((w1>w2) || (v1>v2)) {
 		stop("Your intervals are improperly defined.")
 	}
