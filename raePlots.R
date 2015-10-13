@@ -1,3 +1,4 @@
+options(error=traceback)
 plotA0D0=function(p,dd,save="pdf",live=FALSE) {
   ## save="pdf"; live=TRUE; load("CHECKPOINT.Rdata"); source("funcs.R")
 	suppressMessages(require(IRanges))

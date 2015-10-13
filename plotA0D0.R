@@ -1,5 +1,8 @@
 load("raeImage.Rdata")
 
+options(error=traceback)
+
+
 breaks=data.frame(dd$cohort$breaks)
 
 offset=cumsum(c(0,tapply(breaks$End,breaks$Chr,max)))
