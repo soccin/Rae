@@ -1,4 +1,5 @@
-Legacy Rae repository
-This repository is no longer being maintained. Migrated to GitHub
+## Rae V2 (GitHub)
 
-Known to work with R version 2.12.0
+* Known to work with R version 2.12.0
+
+
