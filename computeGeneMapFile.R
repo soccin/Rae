@@ -1,5 +1,3 @@
-options(error=traceback)
-
 write.xls <- function(dd,filename,row.names=T,col.names=NA) {
   if (!is.data.frame(dd)) {
     dd <- data.frame(dd,check.names=F)

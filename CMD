@@ -1,3 +1,1 @@
 R CMD BATCH --no-save --args --genome=hg18 --project=<PROJECTNAME> --data=<PATH_TO_RDATA_FILES> Rae.R &
-
-/opt/common/CentOS_6-dev/R/R-2.12.0/bin/R CMD BATCH --no-save --no-init-file --args --genome=hg18 --project=<PROJ> --data=<DATA>
